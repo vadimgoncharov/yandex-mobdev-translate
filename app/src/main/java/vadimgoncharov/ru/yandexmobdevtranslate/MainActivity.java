@@ -44,10 +44,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import okhttp3.Call;
+import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.Callback;
 
 import static android.widget.AdapterView.*;
 
@@ -102,6 +105,128 @@ public class MainActivity extends AppCompatActivity {
         return response.body().string();
     }
 
+    public void runDictAsync() throws Exception {
+        Uri builtUri = Uri.parse("https://dictionary.yandex.net/api/v1/dicservice.json/lookup?")
+                .buildUpon()
+                .appendQueryParameter("key", "dict.1.1.20170423T095751Z.17c6722cd4f7ab85.274e20a3edcd7997a997d97d925f35f400c428bc")
+                .appendQueryParameter("lang", "en-ru")
+                .appendQueryParameter("text", mInputText.getText().toString())
+                .build();
+        URL _url = new URL(builtUri.toString());
+
+        Request request = new Request.Builder()
+                .url(_url)
+                .build();
+
+        mHttpClient.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mOutputText.setText("");
+                    }
+                });
+            }
+
+            @Override public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText("");
+                        }
+                    });
+                    throw new IOException("Unexpected code " + response);
+                };
+
+                try {
+                    JSONObject json = new JSONObject(response.body().string());
+                    final String resultText = json
+                            .getJSONArray("def")
+                            .getJSONObject(0)
+                            .getJSONArray("tr")
+                            .getJSONObject(0)
+                            .getString("text");
+
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText(resultText);
+                        }
+                    });
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText("");
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    public void runTranslateAsync() throws Exception {
+        Uri builtUri = Uri.parse("https://translate.yandex.net/api/v1.5/tr.json/translate?")
+                .buildUpon()
+                .appendQueryParameter("key", "trnsl.1.1.20170423T093038Z.3a4d0fb39aafc7e4.a8d74bdbe4e8f71c38716c4ff910f6615cfeea95")
+                .appendQueryParameter("text", mInputText.getText().toString())
+                .appendQueryParameter("lang", "en-ru")
+                .appendQueryParameter("format", "html")
+                .build();
+        URL _url = new URL(builtUri.toString());
+
+        Request request = new Request.Builder()
+                .url(_url)
+                .build();
+
+        mHttpClient.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+                MainActivity.this.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mOutputText.setText("");
+                    }
+                });
+            }
+
+            @Override public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText("");
+                        }
+                    });
+                    throw new IOException("Unexpected code " + response);
+                };
+
+                try {
+                    JSONObject json = new JSONObject(response.body().string());
+                    final String resultText = json.getJSONArray("text").getString(0);
+
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText(resultText);
+                        }
+                    });
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mOutputText.setText("");
+                        }
+                    });
+                }
+            }
+        });
+    }
+
     String dictRun() throws IOException {
         Uri builtUri = Uri.parse("https://dictionary.yandex.net/api/v1/dicservice.json/lookup?")
                 .buildUpon()
@@ -126,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
         StrictMode.setThreadPolicy(policy);
 
         setContentView(R.layout.activity_main);
+
 
         mOutputText = (TextView) findViewById(R.id.output_text);
         mInputText = (EditText) findViewById(R.id.input_text);
@@ -155,15 +281,19 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                mOutputText.setText(charSequence);
+//                mOutputText.setText(charSequence);
+//                    String response = dictRun();
+//                    JSONObject json = new JSONObject(response);
+//                    System.out.println(response);
+//                    System.out.println(json.getJSONArray("def").getJSONObject(0).getString("text"));
+
                 try {
-                    String response = dictRun();
-                    JSONObject json = new JSONObject(response);
-                    System.out.println(response);
-                    System.out.println(json.getJSONArray("def").getJSONObject(0).getString("text"));
+                    runTranslateAsync();
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (JSONException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
