@@ -1,7 +1,10 @@
 package vadimgoncharov.ru.yandexmobdevtranslate;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.StrictMode;
@@ -133,36 +136,16 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
 
-        LayoutInflater inflater = getLayoutInflater();
-        final View convertView = (View) inflater.inflate(R.layout.custom_dialog, null);
-        final ListView mainListView = (ListView) convertView.findViewById(R.id.list_custom);
-        ArrayList<String> langsList = new ArrayList<String>();
-        final ArrayAdapter<String> listAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, langsList);
+        SharedPreferences pref = getApplicationContext().getSharedPreferences(getString(R.string.settings_pref), MODE_PRIVATE);
 
+        String prefLangFrom = pref.getString(getString(R.string.lang_from_saved), "English");
+        String prefLangTo = pref.getString(getString(R.string.lang_to_saved), "Russian");
 
-        TreeMap<String, String> langs = getLangsList();
-        if (langs != null) {
-            for (Map.Entry<String,String> entry : langs.entrySet()) {
-                String value = entry.getValue();
-                String key = entry.getKey();
-                listAdapter.add(key + ": " + value);
-            }
-        }
+        SetLangFrom(prefLangFrom);
+        SetLangTo(prefLangTo);
 
-        mainListView.setAdapter( listAdapter );
-        final AlertDialog.Builder langChooserDialog = new AlertDialog.Builder(MainActivity.this);
-        langChooserDialog.setView(convertView);
-        langChooserDialog.setTitle("Translate from");
-        final AlertDialog show = langChooserDialog.create();
-        mainListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                mLangFrom = listAdapter.getItem(i);
-                show.dismiss();
-                System.out.println(mLangFrom);
-            }
-        });
-
+        final AlertDialog langFromChooserDialog = createLangChooserDialog(true, prefLangFrom);
+        final AlertDialog langToChooserDialog = createLangChooserDialog(false, prefLangTo);
 
         mInputText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -195,9 +178,110 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View view) {
-                show.show();
+                langFromChooserDialog.show();
             }
         });
+        mButtonLangTo.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                langToChooserDialog.show();
+            }
+        });
+
+        mButtonLangToggle.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View view) {
+                String newLangFrom = mLangTo;
+                String newLangTo = mLangFrom;
+
+                SetLangFrom(newLangFrom);
+                SetLangTo(newLangTo);
+
+                // TODO change selectedItem in adapters
+            }
+        });
+    }
+
+    private AlertDialog createLangChooserDialog(final boolean isFrom, String selectedLang) {
+        LayoutInflater inflater = getLayoutInflater();
+        final View convertView = (View) inflater.inflate(R.layout.custom_dialog, null);
+        final ListView mainListView = (ListView) convertView.findViewById(R.id.list_custom);
+        ArrayList<String> langsList = new ArrayList<String>();
+        final ArrayAdapter<String> listAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_checked, langsList);
+
+
+        TreeMap<String, String> langs = getLangsList();
+        if (langs != null) {
+            for (Map.Entry<String,String> entry : langs.entrySet()) {
+                String value = entry.getValue();
+                String key = entry.getKey();
+                listAdapter.add(value);
+            }
+        }
+
+
+        mainListView.setAdapter( listAdapter );
+        mainListView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        final AlertDialog.Builder langChooserDialogBuilder = new AlertDialog.Builder(MainActivity.this);
+        langChooserDialogBuilder.setView(convertView);
+        if (isFrom) {
+            langChooserDialogBuilder.setTitle("Translate from");
+        } else {
+            langChooserDialogBuilder.setTitle("Translate to");
+        }
+        final AlertDialog langChooserDialog = langChooserDialogBuilder.create();
+
+        if (selectedLang != null) {
+            for (int i = 0; i < langsList.size(); i++) {
+                if (langsList.get(i).equals(selectedLang)) {
+                    mainListView.setItemChecked(i, true);
+                }
+            }
+        }
+
+        mainListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                String lang = listAdapter.getItem(i);
+                if (isFrom) {
+                    SetLangFrom(lang);
+                } else {
+                    SetLangTo(lang);
+                }
+                mainListView.setItemChecked(i, true);
+                langChooserDialog.dismiss();
+            }
+        });
+
+        return langChooserDialog;
+    }
+
+    private void SetLangFrom(String lang) {
+        mLangFrom = lang;
+        mButtonLangFrom.setText(lang);
+
+        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
+                getString(R.string.settings_pref),
+                Context.MODE_PRIVATE
+        );
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString(getString(R.string.lang_from_saved), lang);
+        editor.commit();
+    }
+
+    private void SetLangTo(String lang) {
+        mLangTo = lang;
+        mButtonLangTo.setText(lang);
+
+        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences(
+                getString(R.string.settings_pref),
+                Context.MODE_PRIVATE
+        );
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString(getString(R.string.lang_to_saved), lang);
+        editor.commit();
     }
 
     private TreeMap<String, String> getLangsList() {

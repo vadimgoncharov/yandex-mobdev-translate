@@ -3,4 +3,7 @@
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+    <string name="lang_from_saved">lang_from_saved</string>
+    <string name="lang_to_saved">lang_to_saved</string>
+    <string name="settings_pref">settings_pref</string>
 </resources>

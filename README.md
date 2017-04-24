@@ -7,7 +7,7 @@ https://academy.yandex.ru/events/mobdev/msk-2017/
 ## To do:
 - [ ] Input Field for translate-from
 - [ ] Output Field for translate-to (with variants)
-- [ ] Language Switcher
+- [x] Language Switcher
 - [ ] Add phrase to Favorites
 - [ ] Favorites list
 - [ ] History list
