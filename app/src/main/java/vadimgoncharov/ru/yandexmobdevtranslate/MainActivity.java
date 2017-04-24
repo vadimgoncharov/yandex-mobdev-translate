@@ -86,29 +86,10 @@ public class MainActivity extends AppCompatActivity {
 
     };
 
-    String run(String url) throws IOException {
-        String lang = mLangFrom + "-" + mLangTo;
-        Uri builtUri = Uri.parse("https://translate.yandex.net/api/v1.5/tr.json/translate?")
-                .buildUpon()
-                .appendQueryParameter("key", "trnsl.1.1.20170423T093038Z.3a4d0fb39aafc7e4.a8d74bdbe4e8f71c38716c4ff910f6615cfeea95")
-                .appendQueryParameter("text", mInputText.getText().toString())
-                .appendQueryParameter("lang", lang)
-                .appendQueryParameter("format", "html")
-                .build();
-        URL _url = new URL(builtUri.toString());
-
-        Request request = new Request.Builder()
-                .url(_url)
-                .build();
-
-        Response response = mHttpClient.newCall(request).execute();
-        return response.body().string();
-    }
-
     public void runDictAsync() throws Exception {
         Uri builtUri = Uri.parse("https://dictionary.yandex.net/api/v1/dicservice.json/lookup?")
                 .buildUpon()
-                .appendQueryParameter("key", "dict.1.1.20170423T095751Z.17c6722cd4f7ab85.274e20a3edcd7997a997d97d925f35f400c428bc")
+                .appendQueryParameter("key", getString(R.string.YANDEX_DICT_API_KEY))
                 .appendQueryParameter("lang", "en-ru")
                 .appendQueryParameter("text", mInputText.getText().toString())
                 .build();
@@ -171,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
     public void runTranslateAsync() throws Exception {
         Uri builtUri = Uri.parse("https://translate.yandex.net/api/v1.5/tr.json/translate?")
                 .buildUpon()
-                .appendQueryParameter("key", "trnsl.1.1.20170423T093038Z.3a4d0fb39aafc7e4.a8d74bdbe4e8f71c38716c4ff910f6615cfeea95")
+                .appendQueryParameter("key", getString(R.string.YANDEX_TR_API_KEY))
                 .appendQueryParameter("text", mInputText.getText().toString())
                 .appendQueryParameter("lang", "en-ru")
                 .appendQueryParameter("format", "html")
@@ -225,23 +206,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-    }
-
-    String dictRun() throws IOException {
-        Uri builtUri = Uri.parse("https://dictionary.yandex.net/api/v1/dicservice.json/lookup?")
-                .buildUpon()
-                .appendQueryParameter("key", "dict.1.1.20170423T095751Z.17c6722cd4f7ab85.274e20a3edcd7997a997d97d925f35f400c428bc")
-                .appendQueryParameter("lang", "en-ru")
-                .appendQueryParameter("text", mInputText.getText().toString())
-                .build();
-        URL _url = new URL(builtUri.toString());
-
-        Request request = new Request.Builder()
-                .url(_url)
-                .build();
-
-        Response response = mHttpClient.newCall(request).execute();
-        return response.body().string();
     }
 
     @Override
