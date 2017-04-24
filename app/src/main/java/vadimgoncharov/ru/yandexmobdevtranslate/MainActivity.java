@@ -1,20 +1,15 @@
 package vadimgoncharov.ru.yandexmobdevtranslate;
 
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.StrictMode;
-import android.support.annotation.NonNull;
-import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -23,7 +18,6 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -37,60 +31,33 @@ import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 import okhttp3.Call;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.Callback;
-
-import static android.widget.AdapterView.*;
 
 public class MainActivity extends AppCompatActivity {
 
     private Button mButtonLangFrom;
     private Button mButtonLangTo;
     private Button mButtonLangToggle;
-    private String mLangFrom = "en";
-    private String mLangTo = "ru";
+    private String mLangFrom = "English";
+    private String mLangTo = "Russian";
+    private TreeMap<String, String> mLangsList;
     private TextView mOutputText;
     private EditText mInputText;
     private OkHttpClient mHttpClient = new OkHttpClient();
-
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
-
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            switch (item.getItemId()) {
-                case R.id.navigation_home:
-//                    mTextMessage.setText(R.string.title_home);
-                    return true;
-                case R.id.navigation_dashboard:
-//                    mTextMessage.setText(R.string.title_dashboard);
-                    return true;
-                case R.id.navigation_notifications:
-//                    mTextMessage.setText(R.string.title_notifications);
-                    return true;
-            }
-            return false;
-        }
-
-    };
 
     public void runDictAsync() throws Exception {
         Uri builtUri = Uri.parse("https://dictionary.yandex.net/api/v1/dicservice.json/lookup?")
                 .buildUpon()
                 .appendQueryParameter("key", getString(R.string.YANDEX_DICT_API_KEY))
-                .appendQueryParameter("lang", "en-ru")
+                .appendQueryParameter("lang", getLangParamForApiRequest())
                 .appendQueryParameter("text", mInputText.getText().toString())
                 .build();
         URL _url = new URL(builtUri.toString());
@@ -123,17 +90,30 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     JSONObject json = new JSONObject(response.body().string());
-                    final String resultText = json
+                    String trText = json
                             .getJSONArray("def")
                             .getJSONObject(0)
                             .getJSONArray("tr")
                             .getJSONObject(0)
                             .getString("text");
+                    String meanText = json
+                            .getJSONArray("def")
+                            .getJSONObject(0)
+                            .getJSONArray("tr")
+                            .getJSONObject(0)
+                            .getJSONArray("mean")
+                            .getJSONObject(0)
+                            .getString("text");
+                    String resultText = trText;
+                    if (meanText.length() > 0) {
+                        resultText += " (" + meanText + ")";
+                    }
+                    final String resultTextFinal = resultText;
 
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            mOutputText.setText(resultText);
+                            mOutputText.setText("Dict: " + resultTextFinal);
                         }
                     });
                 } catch (JSONException e) {
@@ -154,8 +134,7 @@ public class MainActivity extends AppCompatActivity {
                 .buildUpon()
                 .appendQueryParameter("key", getString(R.string.YANDEX_TR_API_KEY))
                 .appendQueryParameter("text", mInputText.getText().toString())
-                .appendQueryParameter("lang", "en-ru")
-                .appendQueryParameter("format", "html")
+                .appendQueryParameter("lang", getLangParamForApiRequest())
                 .build();
         URL _url = new URL(builtUri.toString());
 
@@ -192,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            mOutputText.setText(resultText);
+                            mOutputText.setText("Translate: " + resultText);
                         }
                     });
                 } catch (JSONException e) {
@@ -217,22 +196,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
+        mLangsList = getLangsListInvertedKeyValue();
         mOutputText = (TextView) findViewById(R.id.output_text);
         mInputText = (EditText) findViewById(R.id.input_text);
         mButtonLangFrom = (Button) findViewById(R.id.button_lang_from);
         mButtonLangTo = (Button) findViewById(R.id.button_lang_to);
         mButtonLangToggle = (Button) findViewById(R.id.button_lang_toggle);
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-
         SharedPreferences pref = getApplicationContext().getSharedPreferences(getString(R.string.settings_pref), MODE_PRIVATE);
 
         String prefLangFrom = pref.getString(getString(R.string.lang_from_saved), "English");
         String prefLangTo = pref.getString(getString(R.string.lang_to_saved), "Russian");
 
-        SetLangFrom(prefLangFrom);
-        SetLangTo(prefLangTo);
+        setLangFrom(prefLangFrom);
+        setLangTo(prefLangTo);
 
         final AlertDialog langFromChooserDialog = createLangChooserDialog(true, prefLangFrom);
         final AlertDialog langToChooserDialog = createLangChooserDialog(false, prefLangTo);
@@ -245,14 +222,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-//                mOutputText.setText(charSequence);
-//                    String response = dictRun();
-//                    JSONObject json = new JSONObject(response);
-//                    System.out.println(response);
-//                    System.out.println(json.getJSONArray("def").getJSONObject(0).getString("text"));
-
                 try {
-                    runTranslateAsync();
+                    if (stringContainsMultiplyWords(mInputText.getText().toString())) {
+                        runTranslateAsync();
+                    } else {
+                        runDictAsync();
+                    }
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (JSONException e) {
@@ -290,12 +266,21 @@ public class MainActivity extends AppCompatActivity {
                 String newLangFrom = mLangTo;
                 String newLangTo = mLangFrom;
 
-                SetLangFrom(newLangFrom);
-                SetLangTo(newLangTo);
+                setLangFrom(newLangFrom);
+                setLangTo(newLangTo);
 
                 // TODO change selectedItem in adapters
             }
         });
+    }
+
+    private Boolean stringContainsMultiplyWords(String str) {
+        String[] name = str.split("\\s+");
+        if (name.length > 1) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private AlertDialog createLangChooserDialog(final boolean isFrom, String selectedLang) {
@@ -340,9 +325,9 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                 String lang = listAdapter.getItem(i);
                 if (isFrom) {
-                    SetLangFrom(lang);
+                    setLangFrom(lang);
                 } else {
-                    SetLangTo(lang);
+                    setLangTo(lang);
                 }
                 mainListView.setItemChecked(i, true);
                 langChooserDialog.dismiss();
@@ -352,7 +337,7 @@ public class MainActivity extends AppCompatActivity {
         return langChooserDialog;
     }
 
-    private void SetLangFrom(String lang) {
+    private void setLangFrom(String lang) {
         mLangFrom = lang;
         mButtonLangFrom.setText(lang);
 
@@ -365,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
         editor.commit();
     }
 
-    private void SetLangTo(String lang) {
+    private void setLangTo(String lang) {
         mLangTo = lang;
         mButtonLangTo.setText(lang);
 
@@ -405,6 +390,32 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+    private TreeMap<String, String> getLangsListInvertedKeyValue() {
+        String langsJsonString = getLangsJsonString();
+        JSONObject langsJson = null;
+        HashMap<String, String> langsHashmap = new HashMap<String, String>();
+
+        try {
+            langsJson = new JSONObject(langsJsonString);
+
+            try {
+                JSONObject langsObjs = langsJson.getJSONObject("langs");
+                for(int i = 0; i<langsObjs.length(); i++){
+                    String k = langsObjs.names().getString(i);
+                    String v = (String) langsObjs.get(langsObjs.names().getString(i));
+                    langsHashmap.put(v, k);
+                }
+                TreeMap<String, String> langsTreemap = new TreeMap<String, String>(langsHashmap);
+                return langsTreemap;
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private String getLangsJsonString() {
         InputStream is = getResources().openRawResource(R.raw.langs_en);
         Writer writer = new StringWriter();
@@ -429,5 +440,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return null;
+    }
+
+    private String getLangParamForApiRequest() {
+        String langFromKey = mLangsList.get(mLangFrom);
+        String langToKey = mLangsList.get(mLangTo);
+
+        String param =  langFromKey + "-" + langToKey;
+        System.out.println(param);
+        return param;
     }
 }
